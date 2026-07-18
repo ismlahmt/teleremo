@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, Text, TextInput, TouchableOpacity, ActivityIndicator, FlatList, Modal, Switch } from 'react-native';
+import { View, StyleSheet, Text, TextInput, TouchableOpacity, ActivityIndicator, FlatList, Modal, Switch, KeyboardAvoidingView, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { setServerIp, saveToken } from '../store/settingsSlice';
 import { RootState } from '../store';
@@ -156,7 +156,10 @@ export const SettingsScreen = () => {
 
       {/* PIN Modalı */}
       <Modal visible={pinModalVisible} transparent={true} animationType="fade">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>{selectedServer?.hostname}</Text>
             <Text style={styles.modalSubtitle}>Bağlanmak için PC ekranındaki şifreyi girin</Text>
@@ -219,7 +222,7 @@ export const SettingsScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* BAŞARI MODALI */}
