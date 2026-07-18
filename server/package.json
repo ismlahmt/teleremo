@@ -11,6 +11,12 @@
   "build": {
     "appId": "com.jesuisapres.teleremo",
     "productName": "Teleremo",
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
     "win": {
       "target": "nsis"
     }

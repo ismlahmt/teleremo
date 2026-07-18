@@ -8,14 +8,14 @@ export const sendCommand = async (endpoint: string) => {
     throw new Error('IP adresi girilmedi!');
   }
 
-  const pin = state.savedPins[ip] || '';
+  const token = state.savedTokens[ip] || '';
 
   try {
     const url = `http://${ip}:3000/api/${endpoint}`;
     const response = await axios.post(url, {}, { 
       timeout: 3000,
       headers: {
-        'X-Auth-PIN': pin
+        'X-Auth-Token': token
       }
     });
     return response.data;

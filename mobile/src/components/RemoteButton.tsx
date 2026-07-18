@@ -6,19 +6,23 @@ import { colors } from '../theme/colors';
 interface RemoteButtonProps {
   iconName?: keyof typeof Ionicons.glyphMap;
   label?: string;
-  onPress: () => void;
+  onPress?: () => void;
+  onPressIn?: () => void;
+  onPressOut?: () => void;
   style?: StyleProp<ViewStyle>;
   color?: string;
   size?: 'normal' | 'large';
 }
 
-export const RemoteButton: React.FC<RemoteButtonProps> = ({ iconName, label, onPress, style, color = colors.primary, size = 'normal' }) => {
+export const RemoteButton: React.FC<RemoteButtonProps> = ({ iconName, label, onPress, onPressIn, onPressOut, style, color = colors.primary, size = 'normal' }) => {
   const isLarge = size === 'large';
   
   return (
     <TouchableOpacity 
       style={[styles.button, { backgroundColor: colors.surface }, style]} 
       onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       activeOpacity={0.7}
     >
       {iconName && <Ionicons name={iconName} size={isLarge ? 48 : 32} color={color} />}

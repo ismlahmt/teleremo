@@ -1,15 +1,31 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { RemoteButton } from '../components/RemoteButton';
 import { sendCommand } from '../api/client';
 import { colors } from '../theme/colors';
 
 export const MediaScreen = () => {
+  const intervalRef = useRef<any>(null);
+
   const handleCommand = async (endpoint: string) => {
     try {
       await sendCommand(`media/${endpoint}`);
     } catch (e) {
       // Hata yönetimi (gerekirse bir toast eklenebilir)
+    }
+  };
+
+  const startRepeatingCommand = (endpoint: string) => {
+    handleCommand(endpoint); // İlk tıklandığında anında bir kez çalıştır
+    intervalRef.current = setInterval(() => {
+      handleCommand(endpoint);
+    }, 200); // Basılı tutulduğu sürece her 200 milisaniyede bir komut gönder
+  };
+
+  const stopRepeatingCommand = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
   };
 
@@ -29,8 +45,9 @@ export const MediaScreen = () => {
       <View style={styles.playbackContainer}>
         <RemoteButton 
           iconName="play-back-outline" 
-          label="Geri Sar"
-          onPress={() => handleCommand('backward')} 
+          label="Geri"
+          onPressIn={() => startRepeatingCommand('backward')} 
+          onPressOut={stopRepeatingCommand}
           color={colors.text} 
           style={styles.playbackBtn}
         />
@@ -43,25 +60,9 @@ export const MediaScreen = () => {
         />
         <RemoteButton 
           iconName="play-forward-outline" 
-          label="İleri Sar"
-          onPress={() => handleCommand('forward')} 
-          color={colors.text} 
-          style={styles.playbackBtn}
-        />
-      </View>
-
-      <View style={[styles.playbackContainer, { marginTop: 16 }]}>
-        <RemoteButton 
-          iconName="play-skip-back-outline" 
-          label="Önceki"
-          onPress={() => handleCommand('prev')} 
-          color={colors.text} 
-          style={styles.playbackBtn}
-        />
-        <RemoteButton 
-          iconName="play-skip-forward-outline" 
-          label="Sonraki"
-          onPress={() => handleCommand('next')} 
+          label="İleri"
+          onPressIn={() => startRepeatingCommand('forward')} 
+          onPressOut={stopRepeatingCommand}
           color={colors.text} 
           style={styles.playbackBtn}
         />

@@ -2,12 +2,12 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface SettingsState {
   serverIp: string;
-  savedPins: Record<string, string>; // IP -> PIN eşleşmesi
+  savedTokens: Record<string, string>; // IP -> Token eşleşmesi
 }
 
 const initialState: SettingsState = {
   serverIp: '',
-  savedPins: {},
+  savedTokens: {},
 };
 
 const settingsSlice = createSlice({
@@ -17,11 +17,11 @@ const settingsSlice = createSlice({
     setServerIp: (state, action: PayloadAction<string>) => {
       state.serverIp = action.payload;
     },
-    savePin: (state, action: PayloadAction<{ip: string, pin: string}>) => {
-      state.savedPins[action.payload.ip] = action.payload.pin;
+    saveToken: (state, action: PayloadAction<{ip: string, token: string}>) => {
+      state.savedTokens[action.payload.ip] = action.payload.token;
     },
   },
 });
 
-export const { setServerIp, savePin } = settingsSlice.actions;
+export const { setServerIp, saveToken } = settingsSlice.actions;
 export default settingsSlice.reducer;

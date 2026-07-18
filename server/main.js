@@ -64,18 +64,31 @@ server.get('/api/discovery', (req, res) => {
 });
 
 // Kimlik Doğrulama Middleware
+const VALID_TOKENS = [];
+
 const requirePin = (req, res, next) => {
+    const providedToken = req.headers['x-auth-token'];
+    if (providedToken && VALID_TOKENS.includes(providedToken)) {
+        return next();
+    }
+
     const providedPin = req.headers['x-auth-pin'];
-    // 15 saniye aralığında gecikme olursa eski PIN'i de 1 döngü geçerli say
     if (providedPin === CURRENT_PIN || providedPin === PREVIOUS_PIN) {
         return next();
     }
-    return res.status(401).json({ success: false, message: 'Hatalı PIN Kodu!' });
+    return res.status(401).json({ success: false, message: 'Yetkisiz erişim!' });
 };
 
-// Test Endpoint'i
-server.post('/api/verify_pin', requirePin, (req, res) => {
-    res.json({ success: true });
+// Eşleşme (Pairing) Endpoint'i
+server.post('/api/verify_pin', (req, res) => {
+    const providedPin = req.headers['x-auth-pin'];
+    if (providedPin === CURRENT_PIN || providedPin === PREVIOUS_PIN) {
+        // Doğru PIN girildiğinde kalıcı bir token oluştur
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        VALID_TOKENS.push(token);
+        return res.json({ success: true, token });
+    }
+    return res.status(401).json({ success: false, message: 'Hatalı PIN Kodu!' });
 });
 
 server.use('/api/media', requirePin);
