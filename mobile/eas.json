@@ -17,17 +17,17 @@
       },
       "channel": "preview"
     },
-    "production": {
+    "publish": {
       "android": {
         "buildType": "apk"
       },
       "env": {
-        "APP_VARIANT": "production"
+        "APP_VARIANT": "publish"
       },
-      "channel": "production"
+      "channel": "publish"
     }
   },
   "submit": {
-    "production": {}
+    "publish": {}
   }
 }
