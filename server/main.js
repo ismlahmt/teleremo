@@ -1,6 +1,7 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, globalShortcut, Tray, Menu } = require('electron');
 const path = require('path');
 const express = require('express');
+const { autoUpdater } = require('electron-updater');
 const cors = require('cors');
 const { keyboard, Key } = require('@nut-tree-fork/nut-js');
 const os = require('os');
@@ -214,7 +215,34 @@ function createWindow() {
     win.loadFile('index.html');
 }
 
+let tray = null;
 app.whenReady().then(() => {
+    // Tray icon settings
+    tray = new Tray(path.join(__dirname, 'icon.png')); // Fallback icon, electron-builder uses build/icon.png for exe
+    const contextMenu = Menu.buildFromTemplate([
+        { label: 'Teleremo Sunucusu Çalışıyor', enabled: false },
+        { type: 'separator' },
+        { label: 'Güncellemeleri Denetle', click: () => autoUpdater.checkForUpdatesAndNotify() },
+        { label: 'Kapat', click: () => {
+            app.isQuitting = true;
+            app.quit();
+        }}
+    ]);
+    tray.setToolTip('Teleremo');
+    tray.setContextMenu(contextMenu);
+
+    // Auto Updater
+    autoUpdater.checkForUpdatesAndNotify();
+
+    autoUpdater.on('update-available', () => {
+        console.log('Güncelleme bulundu, indiriliyor...');
+    });
+
+    autoUpdater.on('update-downloaded', () => {
+        console.log('Güncelleme indirildi, kuruluma geçiliyor...');
+        autoUpdater.quitAndInstall();
+    });
+
     createWindow();
 
     app.on('activate', () => {

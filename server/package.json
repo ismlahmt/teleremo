@@ -11,6 +11,13 @@
   "build": {
     "appId": "com.jesuisapres.teleremo",
     "productName": "Teleremo",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ismlahmt",
+        "repo": "teleremo"
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
@@ -27,6 +34,7 @@
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.6",
     "cors": "^2.8.6",
+    "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "zod": "^4.4.3"
   },
