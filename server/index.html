@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teleremo Sunucusu</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 40px;
+            color: #E2E8F0;
+            letter-spacing: 1px;
+        }
+
+        .timer-container {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin: 0 auto;
+        }
+
+        svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+
+        circle {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+        }
+
+        .bg-circle {
+            stroke: #333;
+        }
+
+        .progress-circle {
+            stroke: #10B981; /* Zümrüt Yeşili */
+            stroke-dasharray: 722; /* 2 * PI * r (r=115) */
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 0.5s linear, stroke 0.5s;
+        }
+
+        .pin-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 56px;
+            font-weight: bold;
+            letter-spacing: 6px;
+            text-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+            color: #10B981;
+        }
+
+        .footer {
+            margin-top: 40px;
+            color: #64748B;
+            font-size: 14px;
+        }
+
+        .footer span {
+            color: #10B981;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Bağlantı Şifresi (PIN)</h1>
+        
+        <div class="timer-container">
+            <svg viewBox="0 0 250 250">
+                <circle class="bg-circle" cx="125" cy="125" r="115"></circle>
+                <circle class="progress-circle" id="progressCircle" cx="125" cy="125" r="115"></circle>
+            </svg>
+            <div class="pin-display" id="pinText">----</div>
+        </div>
+
+        <div class="footer">
+            Telefondan bağlanmak için bu <br> kodu kullanın.
+        </div>
+    </div>
+
+    <script>
+        const pinText = document.getElementById('pinText');
+        const progressCircle = document.getElementById('progressCircle');
+        const totalDuration = 15000; // 15 saniye
+        const circleLength = 722; // Çevre
+
+        async function fetchPin() {
+            try {
+                const response = await fetch('http://localhost:3000/api/pin');
+                const data = await response.json();
+                
+                pinText.innerText = data.pin;
+                
+                // Kalan süreye göre çemberin doluluğunu hesapla
+                const ratio = data.timeRemaining / totalDuration;
+                const offset = circleLength - (ratio * circleLength);
+                progressCircle.style.strokeDashoffset = offset;
+
+                // Son 3 saniye kala rengi kırmızı yap
+                if (data.timeRemaining <= 3500) {
+                    progressCircle.style.stroke = '#EF4444'; // Kırmızı
+                    pinText.style.color = '#EF4444';
+                    pinText.style.textShadow = '0 4px 10px rgba(239, 68, 68, 0.4)';
+                } else {
+                    progressCircle.style.stroke = '#10B981'; // Yeşil
+                    pinText.style.color = '#10B981';
+                    pinText.style.textShadow = '0 4px 10px rgba(16, 185, 129, 0.4)';
+                }
+
+            } catch (err) {
+                console.error('API Hatası:', err);
+            }
+        }
+
+        // Her 500ms'de bir API'ye istek atıp UI'ı güncelle
+        setInterval(fetchPin, 500);
+        fetchPin();
+    </script>
+</body>
+</html>

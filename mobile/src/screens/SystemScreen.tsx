@@ -20,8 +20,18 @@ export const SystemScreen = () => {
 
       <View style={styles.controlsContainer}>
         <RemoteButton 
+          iconName="albums-outline" 
+          size="large"
+          label="Uygulama Değiştir"
+          onPress={() => handleCommand('alt_tab')} 
+          color={colors.accent} 
+          style={[styles.bigButton, { backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: colors.accent }]}
+        />
+
+        <RemoteButton 
           iconName="volume-high" 
           size="large"
+          label="Ses Aç"
           onPress={() => handleCommand('vol_up')} 
           color={colors.primary} 
           style={styles.bigButton}

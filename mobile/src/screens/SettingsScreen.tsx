@@ -6,6 +6,7 @@ import { RootState } from '../store';
 import { colors } from '../theme/colors';
 import * as Network from 'expo-network';
 import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
 
 interface FoundServer {
   ip: string;
@@ -68,7 +69,7 @@ export const SettingsScreen = () => {
       if (found.length === 0) {
         setScanMessage('Ağda açık sunucu bulunamadı.');
       } else {
-        setScanMessage(`${found.length} bilgisayar bulundu.`);
+        setScanMessage(`${found.length} cihaz bulundu.`);
       }
     } catch (e) {
       console.error(e);
@@ -120,7 +121,14 @@ export const SettingsScreen = () => {
       <View style={styles.card}>
         <Text style={styles.label}>Otomatik Ağ Taraması</Text>
         <TouchableOpacity style={[styles.button, styles.scanBtn]} onPress={scanNetwork} disabled={scanning}>
-          {scanning ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Ağı Tara</Text>}
+          {scanning ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="wifi-outline" size={24} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.buttonText}>Cihaz Bul</Text>
+            </>
+          )}
         </TouchableOpacity>
         
         {scanMessage !== '' && <Text style={styles.scanMsgText}>{scanMessage}</Text>}
@@ -128,33 +136,15 @@ export const SettingsScreen = () => {
         <FlatList
           data={foundServers}
           keyExtractor={(item) => item.ip}
-          style={{ marginTop: 16, maxHeight: 150 }}
+          style={{ marginTop: 24, maxHeight: 200 }}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.serverItem} onPress={() => handleServerTap(item)}>
+              <Ionicons name="desktop-outline" size={24} color={colors.accent} />
               <Text style={styles.serverName}>{item.hostname}</Text>
-              <Text style={styles.serverIp}>{item.ip}</Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         />
-      </View>
-
-      <View style={[styles.card, { marginTop: 16 }]}>
-        <Text style={styles.label}>Manuel IP Adresi</Text>
-        <TextInput
-          style={styles.input}
-          value={ipInput}
-          onChangeText={setIpInput}
-          placeholder="Örn: 192.168.1.55"
-          placeholderTextColor={colors.textMuted}
-          keyboardType="numeric"
-        />
-        <TouchableOpacity style={styles.button} onPress={handleSave}>
-          <Text style={styles.buttonText}>Kaydet</Text>
-        </TouchableOpacity>
-        
-        {currentIp ? (
-          <Text style={styles.statusText}>Aktif IP: {currentIp}</Text>
-        ) : null}
       </View>
       
       <Text style={styles.footerText}>Made by jesuisapres</Text>
@@ -164,22 +154,24 @@ export const SettingsScreen = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>{selectedServer?.hostname}</Text>
-            <Text style={styles.modalSubtitle}>Bağlanmak için PC ekranındaki PIN kodunu girin.</Text>
+            <Text style={styles.modalSubtitle}>Bağlanmak için PC ekranındaki şifreyi girin</Text>
             
-            <TextInput
-              style={styles.modalInput}
-              value={pinInput}
-              onChangeText={setPinInput}
-              placeholder="4 Haneli PIN"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="numeric"
-              maxLength={4}
-              secureTextEntry
-            />
+            <View style={styles.pinInputContainer}>
+              <TextInput
+                style={styles.modalInput}
+                value={pinInput}
+                onChangeText={setPinInput}
+                placeholder="0 0 0 0"
+                placeholderTextColor="rgba(255,255,255,0.2)"
+                keyboardType="numeric"
+                maxLength={4}
+                autoFocus={true}
+              />
+            </View>
 
             <View style={styles.rememberRow}>
               <Text style={styles.rememberText}>Beni Hatırla</Text>
-              <Switch value={rememberMe} onValueChange={setRememberMe} thumbColor={colors.accent} trackColor={{ true: 'rgba(16, 185, 129, 0.5)', false: '#333' }} />
+              <Switch value={rememberMe} onValueChange={setRememberMe} thumbColor={colors.accent} trackColor={{ true: 'rgba(16, 185, 129, 0.3)', false: '#333' }} />
             </View>
 
             {pinError !== '' && <Text style={styles.errorText}>{pinError}</Text>}
@@ -237,40 +229,49 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: colors.primary,
-    padding: 16,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
   scanBtn: {
     backgroundColor: colors.accent,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 15,
+    elevation: 8,
   },
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 18,
+    letterSpacing: 1,
   },
   scanMsgText: {
     color: colors.textMuted,
-    marginTop: 12,
+    marginTop: 16,
     textAlign: 'center',
-    fontSize: 12,
+    fontSize: 14,
   },
   serverItem: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 12,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
   },
   serverName: {
     color: colors.text,
     fontWeight: 'bold',
-  },
-  serverIp: {
-    color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 18,
+    marginLeft: 16,
+    flex: 1,
+    letterSpacing: 0.5,
   },
   statusText: {
     color: colors.accent,
@@ -291,71 +292,84 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   modalCard: {
-    backgroundColor: colors.surface,
-    padding: 24,
-    borderRadius: 20,
+    backgroundColor: '#1E293B',
+    padding: 32,
+    borderRadius: 24,
     width: '100%',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
   },
   modalTitle: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: 'bold',
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: '800',
     textAlign: 'center',
     marginBottom: 8,
   },
   modalSubtitle: {
-    color: colors.textMuted,
+    color: '#94A3B8',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
     fontSize: 14,
   },
-  modalInput: {
-    backgroundColor: colors.background,
-    color: colors.text,
-    padding: 16,
-    borderRadius: 12,
-    fontSize: 20,
-    textAlign: 'center',
-    letterSpacing: 8,
+  pinInputContainer: {
+    backgroundColor: '#0F172A',
+    borderRadius: 16,
+    padding: 8,
+    marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  modalInput: {
+    color: '#10B981',
+    fontSize: 48,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    letterSpacing: 24,
+    paddingVertical: 16,
   },
   rememberRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 20,
+    marginBottom: 16,
   },
   rememberText: {
-    color: colors.text,
+    color: '#CBD5E1',
     fontSize: 16,
+    fontWeight: '500',
   },
   modalActions: {
     flexDirection: 'row',
-    marginTop: 24,
+    marginTop: 16,
     justifyContent: 'space-between',
   },
   cancelBtn: {
     flex: 1,
-    backgroundColor: '#333',
+    backgroundColor: 'transparent',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     marginRight: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   submitBtn: {
     flex: 1,
     backgroundColor: colors.accent,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     marginLeft: 8,
   }
