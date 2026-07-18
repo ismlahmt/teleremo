@@ -1,0 +1,87 @@
+import React from 'react';
+import { View, StyleSheet, Text } from 'react-native';
+import { RemoteButton } from '../components/RemoteButton';
+import { sendCommand } from '../api/client';
+import { colors } from '../theme/colors';
+
+export const SystemScreen = () => {
+  const handleCommand = async (endpoint: string) => {
+    try {
+      await sendCommand(`system/${endpoint}`);
+    } catch (e) {
+      // Hata yönetimi
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text style={styles.headerTitle}>Bilgisayarım</Text>
+      <Text style={styles.headerSubtitle}>Genel Sistem Kontrolleri</Text>
+
+      <View style={styles.controlsContainer}>
+        <RemoteButton 
+          iconName="volume-high" 
+          size="large"
+          onPress={() => handleCommand('vol_up')} 
+          color={colors.primary} 
+          style={styles.bigButton}
+        />
+        
+        <View style={styles.row}>
+          <RemoteButton 
+            iconName="volume-mute" 
+            onPress={() => handleCommand('mute')} 
+            color={colors.danger} 
+            style={styles.flexBtn} 
+          />
+          <RemoteButton 
+            iconName="volume-low" 
+            onPress={() => handleCommand('vol_down')} 
+            color={colors.text} 
+            style={styles.flexBtn} 
+          />
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+    padding: 24,
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  headerSubtitle: {
+    color: colors.textMuted,
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 40,
+  },
+  controlsContainer: {
+    paddingHorizontal: 20,
+  },
+  bigButton: {
+    padding: 40,
+    marginBottom: 20,
+    borderRadius: 30,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderColor: colors.primary,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  flexBtn: {
+    flex: 1,
+    marginHorizontal: 8,
+    padding: 24,
+  }
+});
