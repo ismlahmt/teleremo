@@ -1,5 +1,9 @@
-import React, { useState, useRef } from 'react';
-import { View, StyleSheet, Text, TextInput, TouchableOpacity, ActivityIndicator, FlatList, Modal, Switch, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View, StyleSheet, Text, TouchableOpacity,
+  ActivityIndicator, FlatList, Modal, Switch,
+  Dimensions,
+} from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { setServerIp, saveToken } from '../store/settingsSlice';
 import { RootState } from '../store';
@@ -9,41 +13,51 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const IS_SMALL = SCREEN_HEIGHT < 640;
+
 interface FoundServer {
   ip: string;
   hostname: string;
 }
 
+const NUMPAD_KEYS = ['1','2','3','4','5','6','7','8','9','','0','del'];
+
 export const SettingsScreen = () => {
   const dispatch = useDispatch();
   const currentIp = useSelector((state: RootState) => state.settings.serverIp);
-  const savedTokens = useSelector((state: RootState) => state.settings.savedTokens);
   const [ipInput, setIpInput] = useState(currentIp);
 
-  // Scanner state
   const [scanning, setScanning] = useState(false);
   const [foundServers, setFoundServers] = useState<FoundServer[]>([]);
   const [scanMessage, setScanMessage] = useState('');
 
-  // PIN Modal state
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [selectedServer, setSelectedServer] = useState<FoundServer | null>(null);
-  const [pinInput, setPinInput] = useState('');
+  const [pin, setPin] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [pinError, setPinError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
 
-  const pinInputRef = useRef<TextInput>(null);
   const navigation = useNavigation<NavigationProp<any>>();
 
-  const handleSave = () => {
-    dispatch(setServerIp(ipInput.trim()));
-  };
+  // ─── Numpad ────────────────────────────────────────────
+  const onKey = useCallback((key: string) => {
+    if (key === 'del') {
+      setPin(p => p.slice(0, -1));
+      setPinError('');
+    } else if (key !== '' && pin.length < 4) {
+      setPin(p => p + key);
+      setPinError('');
+    }
+  }, [pin]);
 
+  // ─── Network scan ──────────────────────────────────────
   const scanNetwork = async () => {
     setScanning(true);
     setFoundServers([]);
-    setScanMessage('Ağ taranıyor (Yaklaşık 2-3 saniye sürecek)...');
+    setScanMessage('Ağ taranıyor...');
     try {
       const ip = await Network.getIpAddressAsync();
       if (!ip || ip === '0.0.0.0') {
@@ -51,187 +65,193 @@ export const SettingsScreen = () => {
         setScanning(false);
         return;
       }
-
       const parts = ip.split('.');
       const subnet = `${parts[0]}.${parts[1]}.${parts[2]}`;
-      const promises = [];
       const found: FoundServer[] = [];
-
+      const promises = [];
       for (let i = 1; i <= 254; i++) {
         const testIp = `${subnet}.${i}`;
-        const p = axios.get(`http://${testIp}:3000/api/discovery`, { timeout: 1500 })
-          .then(res => {
-            if (res.data && res.data.hostname) {
-              found.push({ ip: testIp, hostname: res.data.hostname });
-            }
-          })
-          .catch(() => {});
-        promises.push(p);
+        promises.push(
+          axios.get(`http://${testIp}:3000/api/discovery`, { timeout: 1500 })
+            .then(res => { if (res.data?.hostname) found.push({ ip: testIp, hostname: res.data.hostname }); })
+            .catch(() => {})
+        );
       }
-
       await Promise.all(promises);
       setFoundServers(found);
-      if (found.length === 0) {
-        setScanMessage('Ağda açık sunucu bulunamadı.');
-      } else {
-        setScanMessage(`${found.length} cihaz bulundu.`);
-      }
-    } catch (e) {
-      console.error(e);
+      setScanMessage(found.length === 0 ? 'Ağda açık sunucu bulunamadı.' : `${found.length} cihaz bulundu.`);
+    } catch {
       setScanMessage('Tarama sırasında hata oluştu.');
     }
     setScanning(false);
   };
 
-  const handleServerTap = (server: FoundServer) => {
+  const openPinModal = (server: FoundServer) => {
     setSelectedServer(server);
-    // Eğer daha önce kaydedilmiş bir PIN varsa, onu kullanabiliriz.
-    // Ancak güvenlik için biz yine de soralım ya da doğrudan deneyelim.
-    setPinInput(''); // PIN sürekli değiştiği için boş bırakıyoruz
+    setPin('');
     setPinError('');
+    setLoading(false);
     setPinModalVisible(true);
   };
 
-  const handlePinSubmit = async () => {
-    if (!selectedServer) return;
+  const closePinModal = () => {
+    setPin('');
+    setPinError('');
+    setPinModalVisible(false);
+  };
+
+  const handleConnect = async () => {
+    if (!selectedServer || pin.length < 4 || loading) return;
+    setLoading(true);
     setPinError('');
     try {
-      // PIN doğrulaması yap
-      const res = await axios.post(`http://${selectedServer.ip}:3000/api/verify_pin`, {}, {
-        timeout: 2000,
-        headers: { 'X-Auth-PIN': pinInput }
-      });
-
-      // Doğrulama başarılı
-      // Token'ı kaydet (Beni hatırla seçiliyse kalıcı olarak, yoksa session için)
+      const res = await axios.post(
+        `http://${selectedServer.ip}:3000/api/verify_pin`, {},
+        { timeout: 3000, headers: { 'X-Auth-PIN': pin } }
+      );
       dispatch(saveToken({ ip: selectedServer.ip, token: res.data.token }));
-      
       dispatch(setServerIp(selectedServer.ip));
       setIpInput(selectedServer.ip);
       setPinModalVisible(false);
+      setPin('');
       setSuccessModalVisible(true);
     } catch (e: any) {
-      if (e.response && e.response.status === 401) {
-        setPinError('Hatalı PIN!');
-      } else {
-        setPinError('Bağlantı hatası.');
-      }
+      setPin('');
+      setPinError(e.response?.status === 401 ? 'Hatalı PIN!' : 'Bağlantı hatası.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.headerTitle}>Ayarlar</Text>
-      
+
       <View style={styles.card}>
         <Text style={styles.label}>Otomatik Ağ Taraması</Text>
         <TouchableOpacity style={[styles.button, styles.scanBtn]} onPress={scanNetwork} disabled={scanning}>
-          {scanning ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="wifi-outline" size={24} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.buttonText}>Cihaz Bul</Text>
-            </>
-          )}
+          {scanning
+            ? <ActivityIndicator color="#fff" />
+            : <>
+                <Ionicons name="wifi-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.buttonText}>Cihaz Bul</Text>
+              </>
+          }
         </TouchableOpacity>
-        
+
         {scanMessage !== '' && <Text style={styles.scanMsgText}>{scanMessage}</Text>}
 
         <FlatList
           data={foundServers}
-          keyExtractor={(item) => item.ip}
-          style={{ marginTop: 24, maxHeight: 200 }}
+          keyExtractor={item => item.ip}
+          style={{ marginTop: 20, maxHeight: 200 }}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.serverItem} onPress={() => handleServerTap(item)}>
-              <Ionicons name="desktop-outline" size={24} color={colors.accent} />
+            <TouchableOpacity style={styles.serverItem} onPress={() => openPinModal(item)}>
+              <Ionicons name="desktop-outline" size={22} color={colors.accent} />
               <Text style={styles.serverName}>{item.hostname}</Text>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         />
       </View>
-      
+
       <Text style={styles.footerText}>Made by jesuisapres</Text>
 
-      {/* PIN Modalı */}
-      <Modal visible={pinModalVisible} transparent={true} animationType="fade">
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
+      {/* ─── PIN MODALI ────────────────────────────── */}
+      <Modal visible={pinModalVisible} transparent animationType="slide" onRequestClose={closePinModal}>
+        <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{selectedServer?.hostname}</Text>
-            <Text style={styles.modalSubtitle}>Bağlanmak için PC ekranındaki şifreyi girin</Text>
-            
-            <View style={{ position: 'relative', width: 280, height: 70, alignSelf: 'center', marginBottom: 32 }}>
-              
-              {/* GÖRÜNMEZ GERÇEK TEXTINPUT (EN ÜSTTE) */}
-              <TextInput
-                value={pinInput}
-                onChangeText={(val) => {
-                  setPinInput(val);
-                  setPinError('');
-                }}
-                keyboardType="numeric"
-                maxLength={4}
-                autoFocus={true}
-                caretHidden={true}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  opacity: 0,
-                  position: 'absolute',
-                  zIndex: 10,
-                }}
-              />
 
-              {/* ALTTA DURAN GÖRSEL KUTULAR (DOKUNULMAZ) */}
-              <View pointerEvents="none" style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', height: '100%', position: 'absolute', zIndex: 1 }}>
-                {[0, 1, 2, 3].map((index) => {
-                  const isFocused = pinInput.length === index;
-                  const digit = pinInput[index] || '';
-                  return (
-                    <View key={index} style={[styles.otpBox, isFocused && styles.otpBoxFocused, { marginHorizontal: 0 }]}>
-                      <Text style={styles.otpText}>{digit}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-
+            {/* Başlık */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{selectedServer?.hostname}</Text>
+              <Text style={styles.modalSubtitle}>PC ekranındaki 4 haneli kodu girin</Text>
             </View>
 
-            <View style={styles.rememberRow}>
-              <Text style={styles.rememberText}>Beni Hatırla</Text>
-              <Switch value={rememberMe} onValueChange={setRememberMe} thumbColor={colors.accent} trackColor={{ true: 'rgba(16, 185, 129, 0.3)', false: '#333' }} />
+            {/* PIN kutuları */}
+            <View style={styles.pinRow}>
+              {[0,1,2,3].map(i => {
+                const filled = i < pin.length;
+                const active = i === pin.length;
+                return (
+                  <View key={i} style={[styles.pinBox, active && styles.pinBoxActive, filled && styles.pinBoxFilled]}>
+                    {pin[i] ? <Text style={styles.pinDigit}>{pin[i]}</Text> : null}
+                  </View>
+                );
+              })}
             </View>
 
+            {/* Hata */}
             {pinError !== '' && (
-              <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={20} color="#EF4444" style={{ marginRight: 8 }} />
+              <View style={styles.errorRow}>
+                <Ionicons name="alert-circle" size={16} color="#EF4444" />
                 <Text style={styles.errorText}>{pinError}</Text>
               </View>
             )}
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setPinModalVisible(false)}>
-                <Text style={styles.buttonText}>İptal</Text>
+            {/* Numpad */}
+            <View style={styles.numpad}>
+              {NUMPAD_KEYS.map((key, idx) => {
+                if (key === '') return <View key={idx} style={styles.numpadKey} />;
+                if (key === 'del') return (
+                  <TouchableOpacity key={idx} style={styles.numpadKey} onPress={() => onKey('del')} activeOpacity={0.6}>
+                    <Ionicons name="backspace-outline" size={IS_SMALL ? 22 : 26} color="#94A3B8" />
+                  </TouchableOpacity>
+                );
+                return (
+                  <TouchableOpacity key={key} style={styles.numpadKey} onPress={() => onKey(key)} activeOpacity={0.6}>
+                    <Text style={styles.numpadDigit}>{key}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Beni hatırla */}
+            <View style={styles.rememberRow}>
+              <Text style={styles.rememberText}>Beni Hatırla</Text>
+              <Switch
+                value={rememberMe}
+                onValueChange={setRememberMe}
+                thumbColor={colors.accent}
+                trackColor={{ true: 'rgba(16,185,129,0.4)', false: '#334' }}
+              />
+            </View>
+
+            {/* Butonlar */}
+            <View style={styles.actionRow}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={closePinModal}>
+                <Text style={styles.cancelBtnText}>İptal</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.submitBtn} onPress={handlePinSubmit}>
-                <Text style={styles.buttonText}>Bağlan</Text>
+              <TouchableOpacity
+                style={[styles.connectBtn, (pin.length < 4 || loading) && styles.connectBtnDisabled]}
+                onPress={handleConnect}
+                disabled={pin.length < 4 || loading}
+              >
+                {loading
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.connectBtnText}>Bağlan</Text>
+                }
               </TouchableOpacity>
             </View>
+
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
-      {/* BAŞARI MODALI */}
-      <Modal visible={successModalVisible} transparent={true} animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { borderColor: 'rgba(16, 185, 129, 0.3)', borderWidth: 2 }]}>
+      {/* ─── BAŞARI MODALI ────────────────────────── */}
+      <Modal 
+        visible={successModalVisible} 
+        transparent 
+        animationType="fade"
+        onRequestClose={() => setSuccessModalVisible(false)}
+      >
+        <View style={styles.successModalOverlay}>
+          <View style={styles.successModalCard}>
             <Ionicons name="checkmark-circle" size={90} color="#10B981" style={{ alignSelf: 'center', marginBottom: 20 }} />
             <Text style={[styles.modalTitle, { color: '#10B981', fontSize: 28 }]}>Başarılı!</Text>
-            <Text style={[styles.modalSubtitle, { fontSize: 16, marginTop: 8 }]}>{selectedServer?.hostname} cihazına güvenli bağlantı kuruldu.</Text>
+            <Text style={[styles.modalSubtitle, { fontSize: 16, marginTop: 8, marginBottom: 24 }]}>
+              {selectedServer?.hostname} cihazına güvenli bağlantı kuruldu.
+            </Text>
             
             <TouchableOpacity 
               style={styles.successBtn} 
@@ -261,7 +281,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 36,
   },
   card: {
     backgroundColor: colors.surface,
@@ -275,198 +295,225 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontWeight: '600',
   },
-  input: {
-    backgroundColor: colors.background,
-    color: colors.text,
-    padding: 16,
-    borderRadius: 12,
-    fontSize: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
   button: {
     backgroundColor: colors.primary,
-    padding: 18,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
   },
   scanBtn: {
     backgroundColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 15,
-    elevation: 8,
+    elevation: 6,
   },
   buttonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 18,
-    letterSpacing: 1,
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
   scanMsgText: {
     color: colors.textMuted,
-    marginTop: 16,
+    marginTop: 12,
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: 13,
   },
   serverItem: {
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 12,
+    backgroundColor: 'rgba(16,185,129,0.05)',
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: 'rgba(16,185,129,0.2)',
   },
   serverName: {
     color: colors.text,
     fontWeight: 'bold',
-    fontSize: 18,
-    marginLeft: 16,
+    fontSize: 16,
+    marginLeft: 12,
     flex: 1,
-    letterSpacing: 0.5,
-  },
-  statusText: {
-    color: colors.accent,
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 15,
-    fontWeight: 'bold',
   },
   footerText: {
     color: colors.textMuted,
     textAlign: 'center',
-    marginTop: 40,
-    fontSize: 12,
-    opacity: 0.5,
+    marginTop: 32,
+    fontSize: 11,
+    opacity: 0.4,
   },
+
+  // ── Modal ─────────────────────────────────────
   modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: '#1E293B',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    color: '#94A3B8',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+
+  // ── PIN kutucukları ───────────────────────────
+  pinRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  pinBox: {
+    width: 58,
+    height: IS_SMALL ? 50 : 58,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  pinBoxActive: {
+    borderColor: colors.accent,
+    backgroundColor: 'rgba(16,185,129,0.08)',
+  },
+  pinBoxFilled: {
+    borderColor: 'rgba(16,185,129,0.4)',
+    backgroundColor: 'rgba(16,185,129,0.06)',
+  },
+  pinDigit: {
+    color: '#10B981',
+    fontSize: 26,
+    fontWeight: '700',
+  },
+
+  // ── Hata ─────────────────────────────────────
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // ── Numpad ────────────────────────────────────
+  numpad: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 12,
+  },
+  numpadKey: {
+    width: '33.33%',
+    height: IS_SMALL ? 40 : 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  numpadDigit: {
+    color: '#E2E8F0',
+    fontSize: IS_SMALL ? 20 : 24,
+    fontWeight: '500',
+  },
+
+  // ── Beni Hatırla ──────────────────────────────
+  rememberRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  rememberText: {
+    color: '#CBD5E1',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+
+  // ── Aksiyon butonları ─────────────────────────
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  cancelBtnText: {
+    color: '#94A3B8',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  connectBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    backgroundColor: colors.accent,
+    marginTop: IS_SMALL ? 0 : 0,
+    elevation: 4,
+  },
+  connectBtnDisabled: {
+    opacity: 0.35,
+  },
+  connectBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+
+  // ── Başarı Modalı ─────────────────────────────
+  successModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
-  modalCard: {
+  successModalCard: {
     backgroundColor: '#1E293B',
-    padding: 32,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
     borderRadius: 24,
     width: '100%',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    maxWidth: 400,
+    borderWidth: 2,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
     shadowRadius: 20,
     elevation: 10,
-  },
-  modalTitle: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  modalSubtitle: {
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginBottom: 32,
-    fontSize: 14,
-  },
-  otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 32,
-    position: 'relative',
-  },
-  otpBox: {
-    width: 60,
-    height: 70,
-    backgroundColor: '#0F172A',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  otpBoxFocused: {
-    borderColor: '#10B981',
-    backgroundColor: 'rgba(16, 185, 129, 0.05)',
-  },
-  otpText: {
-    color: '#10B981',
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  hiddenInput: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    color: 'transparent',
-    backgroundColor: 'transparent',
-    zIndex: 99,
-  },
-  rememberRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  rememberText: {
-    color: '#CBD5E1',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    marginTop: 16,
-    justifyContent: 'space-between',
-  },
-  cancelBtn: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  submitBtn: {
-    flex: 1,
-    backgroundColor: colors.accent,
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginLeft: 8,
   },
   successBtn: {
     backgroundColor: '#10B981',
