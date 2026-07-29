@@ -265,6 +265,20 @@ export const SettingsScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Cihaz Değiştirme Butonu */}
+      <TouchableOpacity 
+        style={styles.switchDeviceBtn} 
+        onPress={() => {
+           import('../store/settingsSlice').then(module => {
+             dispatch(module.setAppMode(null));
+           });
+        }}
+      >
+        <Ionicons name="swap-horizontal" size={20} color={colors.textMuted} />
+        <Text style={styles.switchDeviceBtnText}>Farklı Bir Cihaza Geç (PC / TV)</Text>
+      </TouchableOpacity>
+
     </View>
   );
 };
@@ -535,5 +549,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 18,
     letterSpacing: 1,
+  },
+  switchDeviceBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 40,
+    padding: 12,
+  },
+  switchDeviceBtnText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    marginLeft: 8,
+    fontWeight: '500',
   }
 });

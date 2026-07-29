@@ -37,6 +37,7 @@
     "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "jimp": "^1.6.1",
+    "samsung-tv-remote": "^3.0.9",
     "zod": "^4.4.3"
   },
   "devDependencies": {
