@@ -3,3 +3,7 @@ node_modules/
 dist/
 .git/
 server/
+android/app/build/
+android/.gradle/
+android/build/
+android/app/.cxx/
