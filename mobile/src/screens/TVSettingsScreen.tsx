@@ -139,8 +139,15 @@ export const TVSettingsScreen = () => {
         });
       }, 4000);
 
-    } catch (error) {
-      setScanMessage('Tarama başlatılamadı.');
+    } catch (error: any) {
+      console.warn("Scan Network Error:", error);
+      
+      // Hata mesajını daha açıklayıcı yapalım
+      if (error && error.message && error.message.includes('createSocket')) {
+        setScanMessage('Hata: Yeni APK tam kurulamamış. Lütfen yeni oluşturulan build\'i indirip kurun.');
+      } else {
+        setScanMessage('Tarama başlatılamadı: ' + (error?.message || 'Bilinmeyen hata'));
+      }
       setScanning(false);
     }
   };
