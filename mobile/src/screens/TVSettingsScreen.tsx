@@ -61,7 +61,7 @@ export const TVSettingsScreen = () => {
         return;
       }
       
-      const socket = require('react-native-udp').default.createSocket({ type: 'udp4', reuseAddress: true });
+      const socket = require('react-native-udp').createSocket({ type: 'udp4', reuseAddress: true });
       const { Buffer } = require('buffer');
       const found: FoundTV[] = [];
 
@@ -109,16 +109,40 @@ export const TVSettingsScreen = () => {
                 const tvRegex = /tv|tizen|webos|bravia|roku|dial|mediarenderer|vizio|samsung|chromecast|google\s?cast|fire\s?os|fire\s?stick|shield|mi\s?box|hisense|vidaa|panasonic|viera|philips|tcl|xbox|playstation|android/i;
                 const isTvHint = tvRegex.test(response);
                 
-                setFoundTVs(prev => {
-                  const filtered = prev.filter(t => t.ip !== foundIp);
-                  if (isTvHint) {
-                    const updated = [...filtered, { ip: foundIp, name: `Smart TV (${foundIp})` }];
-                    setScanMessage(`${updated.length} cihaz bulundu.`);
-                    return updated;
+                if (isTvHint) {
+                  const locationMatch = response.match(/LOCATION:\s*(http:\/\/[^\r\n]+)/i);
+                  if (locationMatch && locationMatch[1]) {
+                    fetchWithTimeout(locationMatch[1].trim(), 2000)
+                      .then((xmlRes: any) => xmlRes.text())
+                      .then((xmlText: string) => {
+                        const nameMatch = xmlText.match(/<friendlyName>(.*?)<\/friendlyName>/i);
+                        const deviceName = (nameMatch && nameMatch[1]) ? nameMatch[1] : `Smart TV (${foundIp})`;
+                        setFoundTVs(prev => {
+                          const filtered = prev.filter(t => t.ip !== foundIp);
+                          const updated = [...filtered, { ip: foundIp, name: deviceName }];
+                          setScanMessage(`${updated.length} cihaz bulundu.`);
+                          return updated;
+                        });
+                      })
+                      .catch(() => {
+                        setFoundTVs(prev => {
+                          const filtered = prev.filter(t => t.ip !== foundIp);
+                          const updated = [...filtered, { ip: foundIp, name: `Smart TV (${foundIp})` }];
+                          setScanMessage(`${updated.length} cihaz bulundu.`);
+                          return updated;
+                        });
+                      });
+                  } else {
+                    setFoundTVs(prev => {
+                      const filtered = prev.filter(t => t.ip !== foundIp);
+                      const updated = [...filtered, { ip: foundIp, name: `Smart TV (${foundIp})` }];
+                      setScanMessage(`${updated.length} cihaz bulundu.`);
+                      return updated;
+                    });
                   }
-                  // TV değilse (modem, akıllı priz vb.) listeye eklemeden çıkar
-                  return filtered;
-                });
+                } else {
+                  setFoundTVs(prev => prev.filter(t => t.ip !== foundIp));
+                }
               });
           }
         }
@@ -144,7 +168,7 @@ export const TVSettingsScreen = () => {
       
       // Hata mesajını daha açıklayıcı yapalım
       if (error && error.message && error.message.includes('createSocket')) {
-        setScanMessage('Hata: Yeni APK tam kurulamamış. Lütfen yeni oluşturulan build\'i indirip kurun.');
+        setScanMessage('Ağ taraması başlatılamadı. Hata: UDP Socket oluşturulamadı.');
       } else {
         setScanMessage('Tarama başlatılamadı: ' + (error?.message || 'Bilinmeyen hata'));
       }
