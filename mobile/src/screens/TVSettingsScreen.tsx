@@ -51,7 +51,7 @@ export const TVSettingsScreen = () => {
   const scanNetwork = async () => {
     setScanning(true);
     setFoundTVs([]);
-    setScanMessage('Ağ taranıyor (SSDP ile)...');
+    setScanMessage('Ağ taranıyor...');
     
     try {
       const ip = await Network.getIpAddressAsync();
