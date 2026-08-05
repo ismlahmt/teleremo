@@ -1,14 +1,18 @@
 import React from 'react';
 import { Provider } from 'react-redux';
 import { StatusBar } from 'expo-status-bar';
-import { store } from './src/store';
+import { PersistGate } from 'redux-persist/integration/react';
+import { store, persistor } from './src/store';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { ActivityIndicator, View, Text } from 'react-native';
 
 export default function App() {
   return (
     <Provider store={store}>
-      <StatusBar style="light" />
-      <AppNavigator />
+      <PersistGate loading={<View style={{flex:1,backgroundColor:'#0F172A',justifyContent:'center',alignItems:'center'}}><ActivityIndicator color="#10B981" /></View>} persistor={persistor}>
+        <StatusBar style="light" />
+        <AppNavigator />
+      </PersistGate>
     </Provider>
   );
 }

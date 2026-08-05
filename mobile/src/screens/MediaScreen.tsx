@@ -1,17 +1,21 @@
-import React, { useRef } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, StyleSheet, Text, Alert } from 'react-native';
 import { RemoteButton } from '../components/RemoteButton';
 import { sendCommand } from '../api/client';
 import { colors } from '../theme/colors';
 
 export const MediaScreen = () => {
   const intervalRef = useRef<any>(null);
+  const [lastError, setLastError] = useState('');
 
   const handleCommand = async (endpoint: string) => {
     try {
       await sendCommand(`media/${endpoint}`);
-    } catch (e) {
-      // Hata yönetimi (gerekirse bir toast eklenebilir)
+      setLastError('');
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Bilinmeyen hata';
+      const status = e?.response?.status || 'N/A';
+      setLastError(`[${status}] ${msg}`);
     }
   };
 
@@ -32,6 +36,12 @@ export const MediaScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={[styles.headerTitle, { marginBottom: 30 }]}>Medya Kontrolü</Text>
+
+      {lastError !== '' && (
+        <View style={{ backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)' }}>
+          <Text style={{ color: '#EF4444', fontSize: 12, textAlign: 'center' }}>{lastError}</Text>
+        </View>
+      )}
 
       {/* Üst Kısım: Uygulama İçi Ses */}
       <View style={styles.row}>
