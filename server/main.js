@@ -5,6 +5,14 @@ const { autoUpdater } = require('electron-updater');
 const cors = require('cors');
 const { keyboard, Key } = require('@nut-tree-fork/nut-js');
 const os = require('os');
+const { exec } = require('child_process');
+
+const isLinux = os.platform() === 'linux';
+const executeCmd = (cmd) => {
+    exec(cmd, (error) => {
+        if (error) console.error(`Command failed: ${cmd}`, error.message);
+    });
+};
 
 // ==========================================
 // EXPRESS SUNUCUSU & TOTP (15s PIN) Lojik
@@ -109,59 +117,70 @@ const pressKeyCombination = async (modifiers, key) => {
 
 // Oynatma
 server.post('/api/media/play_pause', async (req, res) => {
-    await pressKey(Key.Space);
+    if (isLinux) executeCmd('playerctl play-pause');
+    else await pressKey(Key.Space);
     res.send({ success: true });
 });
 
 server.post('/api/media/forward', async (req, res) => {
-    await pressKey(Key.Right);
+    if (isLinux) executeCmd('playerctl position 5+');
+    else await pressKey(Key.Right);
     res.send({ success: true });
 });
 
 server.post('/api/media/backward', async (req, res) => {
-    await pressKey(Key.Left);
+    if (isLinux) executeCmd('playerctl position 5-');
+    else await pressKey(Key.Left);
     res.send({ success: true });
 });
 
 // SONRAKİ / ÖNCEKİ (YouTube uyumlu Shift + N / Shift + P)
 server.post('/api/media/next', async (req, res) => {
-    await pressKeyCombination([Key.LeftShift], Key.N);
+    if (isLinux) executeCmd('playerctl next');
+    else await pressKeyCombination([Key.LeftShift], Key.N);
     res.send({ success: true, message: 'Shift+N' });
 });
 
 server.post('/api/media/prev', async (req, res) => {
-    await pressKeyCombination([Key.LeftShift], Key.P);
+    if (isLinux) executeCmd('playerctl previous');
+    else await pressKeyCombination([Key.LeftShift], Key.P);
     res.send({ success: true, message: 'Shift+P' });
 });
 
 // Ses 
 server.post('/api/media/vol_up', async (req, res) => {
-    await pressKey(Key.Up);
+    if (isLinux) executeCmd('wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ || amixer sset Master 5%+');
+    else await pressKey(Key.Up);
     res.send({ success: true });
 });
 
 server.post('/api/media/vol_down', async (req, res) => {
-    await pressKey(Key.Down);
+    if (isLinux) executeCmd('wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- || amixer sset Master 5%-');
+    else await pressKey(Key.Down);
     res.send({ success: true });
 });
 
 server.post('/api/media/mute', async (req, res) => {
-    await pressKey(Key.M);
+    if (isLinux) executeCmd('wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle || amixer sset Master toggle');
+    else await pressKey(Key.M);
     res.send({ success: true });
 });
 
 server.post('/api/system/vol_up', async (req, res) => {
-    await pressKey(Key.AudioVolUp);
+    if (isLinux) executeCmd('wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ || amixer sset Master 5%+');
+    else await pressKey(Key.AudioVolUp);
     res.send({ success: true });
 });
 
 server.post('/api/system/vol_down', async (req, res) => {
-    await pressKey(Key.AudioVolDown);
+    if (isLinux) executeCmd('wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- || amixer sset Master 5%-');
+    else await pressKey(Key.AudioVolDown);
     res.send({ success: true });
 });
 
 server.post('/api/system/mute', async (req, res) => {
-    await pressKey(Key.AudioMute);
+    if (isLinux) executeCmd('wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle || amixer sset Master toggle');
+    else await pressKey(Key.AudioMute);
     res.send({ success: true });
 });
 

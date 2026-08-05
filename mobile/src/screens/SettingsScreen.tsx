@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import {
   View, StyleSheet, Text, TouchableOpacity,
   ActivityIndicator, FlatList, Modal, Switch,
-  Dimensions,
+  Dimensions, TextInput
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { setServerIp, saveToken } from '../store/settingsSlice';
@@ -126,6 +126,29 @@ export const SettingsScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.headerTitle}>Ayarlar</Text>
+
+      <View style={[styles.card, { marginBottom: 16 }]}>
+        <Text style={styles.label}>Manuel Bağlantı</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Örn: 192.168.1.55"
+          placeholderTextColor="rgba(255,255,255,0.3)"
+          value={ipInput || ''}
+          onChangeText={setIpInput}
+          keyboardType="numeric"
+        />
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={() => {
+            const val = ipInput || '';
+            if (!val.trim()) return;
+            dispatch(setServerIp(val.trim()));
+            openPinModal({ ip: val.trim(), hostname: 'Manuel IP' });
+          }}
+        >
+          <Text style={styles.buttonText}>Bağlan</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.card}>
         <Text style={styles.label}>Otomatik Ağ Taraması</Text>
@@ -294,6 +317,16 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: 12,
     fontWeight: '600',
+  },
+  input: {
+    backgroundColor: colors.background,
+    color: colors.text,
+    padding: 16,
+    borderRadius: 12,
+    fontSize: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   button: {
     backgroundColor: colors.primary,
