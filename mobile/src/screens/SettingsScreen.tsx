@@ -2,10 +2,10 @@ import React, { useState, useCallback } from 'react';
 import {
   View, StyleSheet, Text, TouchableOpacity,
   ActivityIndicator, FlatList, Modal, Switch,
-  Dimensions, TextInput
+  Dimensions, TextInput, ScrollView
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { setServerIp, saveToken } from '../store/settingsSlice';
+import { setServerIp, saveToken, setAppMode } from '../store/settingsSlice';
 import { RootState } from '../store';
 import { colors } from '../theme/colors';
 import * as Network from 'expo-network';
@@ -125,60 +125,71 @@ export const SettingsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerTitle}>Ayarlar</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.headerTitle}>Ayarlar</Text>
 
-      <View style={[styles.card, { marginBottom: 16 }]}>
-        <Text style={styles.label}>Manuel Bağlantı</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Örn: 192.168.1.55"
-          placeholderTextColor="rgba(255,255,255,0.3)"
-          value={ipInput || ''}
-          onChangeText={setIpInput}
-          keyboardType="numeric"
-        />
+        <View style={[styles.card, { marginBottom: 16 }]}>
+          <Text style={styles.label}>Manuel Bağlantı</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Örn: 192.168.1.55"
+            placeholderTextColor="rgba(255,255,255,0.3)"
+            value={ipInput || ''}
+            onChangeText={setIpInput}
+            keyboardType="numeric"
+          />
+          <TouchableOpacity 
+            style={styles.button} 
+            onPress={() => {
+              const val = ipInput || '';
+              if (!val.trim()) return;
+              dispatch(setServerIp(val.trim()));
+              openPinModal({ ip: val.trim(), hostname: 'Manuel IP' });
+            }}
+          >
+            <Text style={styles.buttonText}>Bağlan</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.label}>Otomatik Ağ Taraması</Text>
+          <TouchableOpacity style={[styles.button, styles.scanBtn]} onPress={scanNetwork} disabled={scanning}>
+            {scanning
+              ? <ActivityIndicator color="#fff" />
+              : <>
+                  <Ionicons name="wifi-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.buttonText}>Cihaz Bul</Text>
+                </>
+            }
+          </TouchableOpacity>
+
+          {scanMessage !== '' && <Text style={styles.scanMsgText}>{scanMessage}</Text>}
+
+          <FlatList
+            data={foundServers}
+            keyExtractor={item => item.ip}
+            style={{ marginTop: 20, maxHeight: 200 }}
+            scrollEnabled={false}
+            renderItem={({ item }) => (
+              <TouchableOpacity style={styles.serverItem} onPress={() => openPinModal(item)}>
+                <Ionicons name="desktop-outline" size={22} color={colors.accent} />
+                <Text style={styles.serverName}>{item.hostname}</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+
         <TouchableOpacity 
-          style={styles.button} 
-          onPress={() => {
-            const val = ipInput || '';
-            if (!val.trim()) return;
-            dispatch(setServerIp(val.trim()));
-            openPinModal({ ip: val.trim(), hostname: 'Manuel IP' });
-          }}
+          style={styles.switchDeviceBtn} 
+          onPress={() => dispatch(setAppMode(null))}
         >
-          <Text style={styles.buttonText}>Bağlan</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.label}>Otomatik Ağ Taraması</Text>
-        <TouchableOpacity style={[styles.button, styles.scanBtn]} onPress={scanNetwork} disabled={scanning}>
-          {scanning
-            ? <ActivityIndicator color="#fff" />
-            : <>
-                <Ionicons name="wifi-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.buttonText}>Cihaz Bul</Text>
-              </>
-          }
+          <Ionicons name="swap-horizontal" size={20} color={colors.textMuted} />
+          <Text style={styles.switchDeviceBtnText}>Farklı Bir Cihaza Geç (PC / TV)</Text>
         </TouchableOpacity>
 
-        {scanMessage !== '' && <Text style={styles.scanMsgText}>{scanMessage}</Text>}
-
-        <FlatList
-          data={foundServers}
-          keyExtractor={item => item.ip}
-          style={{ marginTop: 20, maxHeight: 200 }}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.serverItem} onPress={() => openPinModal(item)}>
-              <Ionicons name="desktop-outline" size={22} color={colors.accent} />
-              <Text style={styles.serverName}>{item.hostname}</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
-        />
-      </View>
-
-      <Text style={styles.footerText}>Made by jesuisapres</Text>
+        <Text style={styles.footerText}>Made by jesuisapres</Text>
+      </ScrollView>
 
       {/* ─── PIN MODALI ────────────────────────────── */}
       <Modal visible={pinModalVisible} transparent animationType="slide" onRequestClose={closePinModal}>
@@ -296,8 +307,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scrollContent: {
     padding: 24,
+    paddingBottom: 40,
     justifyContent: 'center',
+    flexGrow: 1,
   },
   headerTitle: {
     color: colors.text,
@@ -372,9 +387,22 @@ const styles = StyleSheet.create({
   footerText: {
     color: colors.textMuted,
     textAlign: 'center',
-    marginTop: 32,
-    fontSize: 11,
-    opacity: 0.4,
+    fontSize: 12,
+    marginTop: 20,
+    opacity: 0.5,
+  },
+  switchDeviceBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 40,
+    padding: 12,
+  },
+  switchDeviceBtnText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    marginLeft: 8,
+    fontWeight: '500',
   },
 
   // ── Modal ─────────────────────────────────────
