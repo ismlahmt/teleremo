@@ -11,6 +11,26 @@
   "build": {
     "appId": "com.jesuisapres.teleremo",
     "productName": "Teleremo",
+    "npmRebuild": false,
+    "files": [
+      "main.js",
+      "index.html",
+      "icon.png",
+      "src/**/*",
+      "node_modules/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/@nut-tree-fork/**/*",
+      "node_modules/@nut-tree/**/*",
+      "icon.png"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ismlahmt",
+        "repo": "teleremo"
+      }
+    ],
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
@@ -27,7 +47,10 @@
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.6",
     "cors": "^2.8.6",
+    "electron-updater": "^6.8.9",
     "express": "^5.2.1",
+    "jimp": "^1.6.1",
+    "samsung-tv-remote": "^3.0.9",
     "zod": "^4.4.3"
   },
   "devDependencies": {

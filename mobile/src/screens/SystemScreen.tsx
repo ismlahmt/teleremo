@@ -29,24 +29,24 @@ export const SystemScreen = () => {
         />
 
         <RemoteButton 
-          iconName="volume-high" 
+          iconName="volume-mute" 
           size="large"
-          label="Ses Aç"
-          onPress={() => handleCommand('vol_up')} 
-          color={colors.primary} 
-          style={styles.bigButton}
+          label="Sustur"
+          onPress={() => handleCommand('mute')} 
+          color={colors.danger} 
+          style={[styles.bigButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: colors.danger }]}
         />
         
         <View style={styles.row}>
           <RemoteButton 
-            iconName="volume-mute" 
-            onPress={() => handleCommand('mute')} 
-            color={colors.danger} 
+            iconName="volume-low" 
+            onPress={() => handleCommand('vol_down')} 
+            color={colors.text} 
             style={styles.flexBtn} 
           />
           <RemoteButton 
-            iconName="volume-low" 
-            onPress={() => handleCommand('vol_down')} 
+            iconName="volume-high" 
+            onPress={() => handleCommand('vol_up')} 
             color={colors.text} 
             style={styles.flexBtn} 
           />

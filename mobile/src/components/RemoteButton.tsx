@@ -19,11 +19,11 @@ export const RemoteButton: React.FC<RemoteButtonProps> = ({ iconName, label, onP
   
   return (
     <TouchableOpacity 
-      style={[styles.button, { backgroundColor: colors.surface }, style]} 
+      style={[styles.button, { backgroundColor: 'transparent' }, style]} 
       onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
-      activeOpacity={0.7}
+      activeOpacity={0.5}
     >
       {iconName && <Ionicons name={iconName} size={isLarge ? 48 : 32} color={color} />}
       {label && <Text style={[styles.label, { color: color, marginTop: iconName ? 8 : 0 }]}>{label}</Text>}
@@ -37,13 +37,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    backgroundColor: 'rgba(30, 41, 59, 0.4)', // Subtle glass background
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.08)', // Premium crisp border
   },
   label: {
     fontSize: 14,
