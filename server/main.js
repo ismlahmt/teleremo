@@ -213,26 +213,66 @@ function createWindow() {
     });
 
     win.loadFile('index.html');
+
+    // Pencere kapatılınca destroy etme, sadece gizle (sunucu çalışmaya devam eder)
+    win.on('close', (event) => {
+        if (!app.isQuitting) {
+            event.preventDefault();
+            win.hide();
+        }
+    });
+
+    return win;
 }
 
 let tray = null;
+let mainWindow = null;
+
+function createOrFocusWindow() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+        return;
+    }
+    mainWindow = createWindow();
+}
+
 app.whenReady().then(() => {
     // Tray icon settings
-    tray = new Tray(path.join(__dirname, 'icon.png')); // Fallback icon, electron-builder uses build/icon.png for exe
+    // Packaged app'te icon ASAR dışında (asarUnpack), dev'de ise __dirname içinde
+    const iconPath = app.isPackaged
+        ? path.join(process.resourcesPath, 'app.asar.unpacked', 'icon.png')
+        : path.join(__dirname, 'icon.png');
+    tray = new Tray(iconPath);
     const contextMenu = Menu.buildFromTemplate([
         { label: 'Teleremo Sunucusu Çalışıyor', enabled: false },
         { type: 'separator' },
-        { label: 'Güncellemeleri Denetle', click: () => autoUpdater.checkForUpdatesAndNotify() },
+        { label: 'Aç', click: () => createOrFocusWindow() },
+        { type: 'separator' },
+        { label: 'Güncellemeleri Denetle', click: () => {
+            try { autoUpdater.checkForUpdatesAndNotify(); } catch(e) { console.error('Güncelleme hatası:', e); }
+        }},
         { label: 'Kapat', click: () => {
             app.isQuitting = true;
             app.quit();
         }}
     ]);
-    tray.setToolTip('Teleremo');
+    tray.setToolTip('Teleremo - Sunucu Çalışıyor');
     tray.setContextMenu(contextMenu);
 
-    // Auto Updater
-    autoUpdater.checkForUpdatesAndNotify();
+    // Çift tıkla pencereyi aç/kapat
+    tray.on('double-click', () => createOrFocusWindow());
+
+    // Auto Updater — hata yakalama ile
+    try {
+        autoUpdater.checkForUpdatesAndNotify();
+    } catch(e) {
+        console.error('Güncelleme kontrolü başarısız:', e);
+    }
+
+    autoUpdater.on('error', (err) => {
+        console.error('AutoUpdater hatası:', err);
+    });
 
     autoUpdater.on('update-available', () => {
         console.log('Güncelleme bulundu, indiriliyor...');
@@ -243,17 +283,20 @@ app.whenReady().then(() => {
         autoUpdater.quitAndInstall();
     });
 
-    createWindow();
+    mainWindow = createWindow();
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow();
+            mainWindow = createWindow();
         }
     });
 });
 
+// Tray app: pencere kapatılınca uygulama kapanmaz, tray'den devam eder
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
+    // Sadece macOS dışında ve kullanıcı "Kapat" menüsüne tıkladıysa kapat
+    if (process.platform !== 'darwin' && app.isQuitting) {
         app.quit();
     }
+    // Aksi takdirde sadece pencere gizlenir, sunucu çalışmaya devam eder
 });

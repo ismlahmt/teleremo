@@ -11,6 +11,19 @@
   "build": {
     "appId": "com.jesuisapres.teleremo",
     "productName": "Teleremo",
+    "npmRebuild": false,
+    "files": [
+      "main.js",
+      "index.html",
+      "icon.png",
+      "src/**/*",
+      "node_modules/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/@nut-tree-fork/**/*",
+      "node_modules/@nut-tree/**/*",
+      "icon.png"
+    ],
     "publish": [
       {
         "provider": "github",
